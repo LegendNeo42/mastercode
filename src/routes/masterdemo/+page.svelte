@@ -11,6 +11,41 @@
 	// Status, ob Gruppe sichtbar ist
 	let visibleGroups = new Set(Array.from(series)); // war vorher evtl. in onMount
 
+	let sortCategoriesAsc = true;
+	function toggleSortCategories() {
+		sortCategoriesAsc = !sortCategoriesAsc;
+
+		// 1) aktive Gruppen ermitteln
+		const active = Array.from(visibleGroups);
+
+		// 2) Summe je Kategorie (nur aktive Gruppen)
+		const sums = new Map<string, number>(
+			data.map((row) => [row.label, active.reduce((acc, g) => acc + row[g], 0)])
+		);
+
+		// 3) neue Domain der Kategorien nach Summe sortieren
+		const newDomain = [...xScaleCategories.domain()].sort((a, b) => {
+			const sa = sums.get(a) ?? 0;
+			const sb = sums.get(b) ?? 0;
+			return sortCategoriesAsc ? sa - sb : sb - sa;
+		});
+		xScaleCategories.domain(newDomain);
+
+		// 4) Kategorien-Gruppen sanft an neue x-Position schieben
+		chartGroup
+			.selectAll<SVGGElement, any>('g.category')
+			.transition()
+			.duration(600)
+			.attr('transform', (d: any) => `translate(${xScaleCategories(d.label) ?? 0},0)`);
+
+		// 5) X-Achse mit animieren
+		chartGroup
+			.select<SVGGElement>('.x-axis')
+			.transition()
+			.duration(600)
+			.call(d3.axisBottom(xScaleCategories));
+	}
+
 	const data: Row[] = [
 		{ label: 'zu Fuß', Prof: 2, 'Wiss. Mitarbeiter': 4, 'Wiss. stützend': 3, Studierende: 5 },
 		{ label: 'Fahrrad', Prof: 20, 'Wiss. Mitarbeiter': 28, 'Wiss. stützend': 18, Studierende: 25 },
@@ -273,8 +308,17 @@
 
 <div class="p-6">
 	<h1 class="mb-4 text-xl font-bold">Mobilitätsdaten – Universität Regensburg</h1>
+
+	<div class="mb-4 flex gap-2">
+		<button
+			class="rounded border px-3 py-1.5 text-sm hover:bg-slate-50"
+			onclick={toggleSortCategories}
+		>
+			Kategorien nach Summe sortieren
+		</button>
+	</div>
+
 	<svg bind:this={svgElement}></svg>
-	<!-- Tooltip-Container -->
 	<div
 		id="tooltip"
 		class="pointer-events-none absolute z-10 rounded bg-black/80 px-2 py-1 text-xs text-white shadow"
