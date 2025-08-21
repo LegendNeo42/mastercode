@@ -9,21 +9,18 @@
 	let tooltipDiv: HTMLDivElement;
 	let xScaleCategories: d3.ScaleBand<string>;
 	// Status, ob Gruppe sichtbar ist
-	let visibleGroups = new Set(Array.from(series)); // war vorher evtl. in onMount
+	const visibleGroups = new Set<Series>(Array.from(series));
 
 	let sortCategoriesAsc = true;
 	function toggleSortCategories() {
 		sortCategoriesAsc = !sortCategoriesAsc;
 
-		// 1) aktive Gruppen ermitteln
 		const active = Array.from(visibleGroups);
 
-		// 2) Summe je Kategorie (nur aktive Gruppen)
 		const sums = new Map<string, number>(
 			data.map((row) => [row.label, active.reduce((acc, g) => acc + row[g], 0)])
 		);
 
-		// 3) neue Domain der Kategorien nach Summe sortieren
 		const newDomain = [...xScaleCategories.domain()].sort((a, b) => {
 			const sa = sums.get(a) ?? 0;
 			const sb = sums.get(b) ?? 0;
@@ -31,7 +28,6 @@
 		});
 		xScaleCategories.domain(newDomain);
 
-		// 4) Kategorien-Gruppen sanft an neue x-Position schieben
 		chartGroup
 			.selectAll<SVGGElement, any>('g.category')
 			.transition()
@@ -39,7 +35,6 @@
 			.ease(d3.easeCubicInOut)
 			.attr('transform', (d: any) => `translate(${xScaleCategories(d.label) ?? 0},0)`);
 
-		// 5) X-Achse mit animieren
 		chartGroup
 			.select<SVGGElement>('.x-axis')
 			.transition()
@@ -84,24 +79,22 @@
 		{ label: 'Motorrad', Prof: 35, 'Wiss. Mitarbeiter': 45, 'Wiss. stützend': 55, Studierende: 40 }
 	];
 	const originalCategoryOrder = data.map((d) => d.label);
-	// Gesamtgröße des SVG
+
 	const svgWidth = 800;
 	const svgHeight = 500;
 
-	// Außenränder für Achsenbeschriftungen & Legende
 	const margin = { top: 40, right: 150, bottom: 50, left: 60 };
 
-	// Innenfläche, auf der die Balken & Achsen liegen
 	const chartWidth = svgWidth - margin.left - margin.right;
 	const chartHeight = svgHeight - margin.top - margin.bottom;
 
 	let svgElement: SVGSVGElement;
 
 	onMount(() => {
-		// Erstelle Haupt-SVG
+		// Erstelle SVG
 		const svg = d3.select(svgElement).attr('width', svgWidth).attr('height', svgHeight);
 
-		// Erstelle eine verschobene Gruppe für den Chart-Bereich
+		// Erstelle Gruppe für Chart-Bereich
 		chartGroup = svg
 			.append('g')
 			.attr('transform', `translate(${margin.left},${margin.top})`)
@@ -110,34 +103,31 @@
 			.append('rect')
 			.attr('width', chartWidth)
 			.attr('height', chartHeight)
-			.attr('fill', '#f8fafc') // heller Hintergrund
-			.attr('stroke', '#e5e7eb') // zarter Rand
+			.attr('fill', '#f8fafc')
+			.attr('stroke', '#e5e7eb')
 			.attr('rx', 6);
 
-		// 1) Verkehrsmittel (große Gruppen auf der X-Achse)
+		// Verkehrsmittel
 		xScaleCategories = d3
 			.scaleBand<string>()
 			.domain(data.map((d) => d.label)) // ["zu Fuß","Fahrrad",...]
 			.range([0, chartWidth])
-			.paddingInner(0.2) // Abstand zwischen den Kategorien
+			.paddingInner(0.2)
 			.paddingOuter(0.05);
 
-		// 2) Status-Gruppen innerhalb einer Kategorie (Teilbalken)
+		// Status-Gruppen in einer Kategorie
 		const xScaleGroups = d3
 			.scaleBand<string>()
 			.domain(Array.from(series)) // ["Prof","Wiss. Mitarbeiter",...]
 			.range([0, xScaleCategories.bandwidth()])
 			.padding(0.1); // Abstand zwischen Teilbalken
 
-		// 3) Y-Skala (Werte → Höhe)
+		//
 		const yMax = d3.max(data, (row) => d3.max(Array.from(series), (s) => row[s]))!;
-		const yScale = d3
-			.scaleLinear()
-			.domain([0, yMax]) // 0 bis Maximalwert
-			.range([chartHeight, 0]); // unten→oben (für Achsen korrekt)
+		const yScale = d3.scaleLinear().domain([0, yMax]).range([chartHeight, 0]);
 
 		// Y-Achse links (mit Format)
-		const fmt = d3.format(',.0f'); // 1 234
+		const fmt = d3.format(',.0f');
 		chartGroup
 			.append('g')
 			.call(
@@ -147,12 +137,13 @@
 					.tickFormat((d) => `${fmt(d as number)} km`)
 			)
 			.attr('class', 'y-axis');
+
 		// Y-Achsen-Beschriftung
 		chartGroup
 			.append('text')
 			.attr('class', 'y-axis-label')
-			.attr('x', -margin.left + 10) // etwas links vom Diagramm
-			.attr('y', -10) // oberhalb der Y-Achse
+			.attr('x', -margin.left + 10)
+			.attr('y', -10)
 			.attr('text-anchor', 'start')
 			.attr('font-size', 14)
 			.attr('font-weight', 'bold')
@@ -178,7 +169,7 @@
 			.append('text')
 			.attr('class', 'x-axis-label')
 			.attr('x', chartWidth / 2)
-			.attr('y', chartHeight + margin.bottom) // etwas unter der Achse
+			.attr('y', chartHeight + margin.bottom)
 			.attr('text-anchor', 'middle')
 			.attr('font-size', 14)
 			.attr('font-weight', 'bold')
@@ -189,18 +180,19 @@
 			.append('text')
 			.attr('class', 'chart-subtitle')
 			.attr('x', chartWidth / 2)
-			.attr('y', -margin.top / 2) // oberhalb des Diagramms, aber innerhalb des SVG
+			.attr('y', -margin.top / 2)
 			.attr('text-anchor', 'middle')
 			.attr('font-size', 13)
-			.attr('fill', '#374151') // Tailwind slate-700
+			.attr('fill', '#374151')
 			.text('Distanz pro Verkehrsmittel und Statusgruppe');
 
 		// Farbskala pro Status-Gruppe
 		const colorScale = d3
 			.scaleOrdinal<string, string>()
 			.domain(Array.from(series))
-			.range(d3.schemeTableau10);
-		// Eine <g>-Gruppe je Verkehrsmittel (Kategorie)
+			.range(['#1f77b4', '#2ca02c', '#bcbd22', '#d62728']);
+
+		// Eine Gruppe je Verkehrsmittel
 		const categoryGroups = chartGroup
 			.selectAll('g.category')
 			.data(data)
@@ -209,20 +201,20 @@
 			.attr('class', 'category')
 			.attr('transform', (d) => `translate(${xScaleCategories(d.label) ?? 0},0)`);
 
-		// horizontale Gridlines hinter den Balken
+		// Gridlines hinter den Balken
 		const yGrid = chartGroup.append('g').attr('class', 'y-grid');
 		yGrid
 			.call(
 				d3
 					.axisLeft(yScale)
-					.ticks(6) // Anzahl Linien (anpassen, z. B. 8)
+					.ticks(6)
 					.tickSize(-chartWidth)
-					.tickFormat(() => '') // keine Labels
+					.tickFormat(() => '')
 			)
 			.selectAll('line')
-			.attr('stroke', '#e5e7eb') // hellgrau
+			.attr('stroke', '#e5e7eb')
 			.attr('stroke-opacity', 1);
-		yGrid.selectAll('path').remove(); // Achsenlinie entfernen
+		yGrid.selectAll('path').remove();
 		// Balken über das Grid heben
 		chartGroup.selectAll<SVGGElement, unknown>('g.category').raise();
 
@@ -233,7 +225,7 @@
 			.enter()
 			.append('rect')
 			.attr('class', 'bar')
-			.attr('data-group', (d) => d.group) // Marker: gehört zu welcher Status-Gruppe
+			.attr('data-group', (d) => d.group)
 			.attr('x', (d) => xScaleGroups(d.group)!)
 			.attr('y', (d) => yScale(d.value))
 			.attr('width', xScaleGroups.bandwidth())
@@ -246,6 +238,7 @@
 				tooltipDiv = document.getElementById('tooltip') as HTMLDivElement;
 				tooltipDiv.style.display = 'block';
 				tooltipDiv.textContent = `${d.group} – ${d.value} km`;
+
 				// gesamte Kategorie hervorheben
 				const catGroup = (this as SVGRectElement).parentNode as SVGGElement;
 				const catData = d3.select<SVGGElement, Row>(catGroup).datum();
@@ -272,9 +265,9 @@
 			.append('text')
 			.attr('class', 'bar-label')
 			.attr('x', (d) => (xScaleGroups(d.group) ?? 0) + xScaleGroups.bandwidth() / 2)
-			.attr('y', (d) => yScale(d.value) - 4) // leicht oberhalb des Balkens
-			.attr('data-group', (d) => d.group) // Gruppe merken – wie bei den Balken
-			.attr('opacity', 1) // definierter Startzustand
+			.attr('y', (d) => yScale(d.value) - 4)
+			.attr('data-group', (d) => d.group)
+			.attr('opacity', 1)
 			.attr('text-anchor', 'middle')
 			.attr('font-size', '10px')
 			.attr('fill', '#374151')
@@ -325,18 +318,16 @@
 
 		// ENDE OnMount
 	});
-
+	// Update alle Balken
 	function updateBars() {
-		const activeGroups = Array.from(visibleGroups);
+		const activeGroups: Series[] = Array.from(visibleGroups);
 
-		// Neue xScaleGroups mit nur aktiven Gruppen
 		const xScaleGroupsUpdated = d3
 			.scaleBand<string>()
 			.domain(activeGroups)
 			.range([0, xScaleCategories.bandwidth()])
 			.padding(0.1);
 
-		// Update alle Balken
 		chartGroup
 			.selectAll<SVGRectElement, any>('rect.bar')
 			.transition()
@@ -350,7 +341,7 @@
 			.attr('opacity', (d) => (activeGroups.includes(d.group) ? 1 : 0));
 
 		chartGroup
-			.selectAll<SVGTextElement, { group: string; value: number }>('text.bar-label')
+			.selectAll<SVGTextElement, { group: Series; value: number }>('text.bar-label')
 			.transition()
 			.duration(500)
 			.ease(d3.easeCubicInOut)
@@ -358,15 +349,13 @@
 				activeGroups.includes(d.group)
 					? xScaleGroupsUpdated(d.group)! + xScaleGroupsUpdated.bandwidth() / 2
 					: xScaleCategories.bandwidth() / 2
-			) // egaler Platzhalter, wenn ausgeblendet
+			)
 			.attr('opacity', (d) => (activeGroups.includes(d.group) ? 1 : 0));
 	}
 
 	function resetCategoryOrder() {
-		// X-Domain auf Ursprungsreihenfolge setzen
 		xScaleCategories.domain(originalCategoryOrder);
 
-		// Kategorien sanft zurückschieben
 		chartGroup
 			.selectAll<SVGGElement, any>('g.category')
 			.transition()
@@ -374,7 +363,6 @@
 			.ease(d3.easeCubicInOut)
 			.attr('transform', (d: any) => `translate(${xScaleCategories(d.label) ?? 0},0)`);
 
-		// X-Achse mit animieren
 		chartGroup
 			.select<SVGGElement>('.x-axis')
 			.transition()
